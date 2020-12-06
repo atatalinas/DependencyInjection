@@ -64,6 +64,18 @@ namespace DependencyInjection
             return null;
         }
 
+        private object GetInstance(ImplementationInfo tImplementation)
+        {
+
+            if (tImplementation.isSingleton)
+            {
+                return tImplementation.GetInstance(this);
+            }
+            else
+            {
+                return Create(tImplementation.implementationType);
+            }
+        }
         private object Create(Type t)
         {
             if (!_stack.Contains(t))
