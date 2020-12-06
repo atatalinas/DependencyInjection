@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -10,6 +12,7 @@ namespace DependencyInjection
     {
         private DependenciesConfiguration _configuration;
         private readonly ConcurrentStack<Type> _stack;
+        private Type _currentGenericType;
 
         public DependencyProvider(DependenciesConfiguration configuration)
         {
@@ -30,9 +33,10 @@ namespace DependencyInjection
             {
                 if (!tDependency.IsValueType)
                 {
-                    foreach (Type tImplementation in configuration.dependencies[tDependency])
+                    foreach (ImplementationInfo dependency in configuration.dependencies[tDependency])
                     {
-                        if (tImplementation.IsAbstract || tImplementation.IsInterface)
+                        Type tImplementation = dependency.implementationType;
+                        if (tImplementation.IsAbstract || tImplementation.IsInterface || !tDependency.IsAssignableFrom(tImplementation))
                         {
                             return false;
                         }
@@ -46,22 +50,56 @@ namespace DependencyInjection
             return true;
         }
 
+        public T Resolve<T>() where T : class
+        {
+            Type t = typeof(T);
+            return (T)Resolve(t);
+        }
+
+        private object Resolve(Type t)
+        {
+            List<ImplementationInfo> implementations;
+
+            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                return CreateGeneric(t);
+            }
+
+            _configuration.dependencies.TryGetValue(t, out implementations);
+            if (implementations != null)
+                return GetInstance(implementations.First());
+            else
+            {
+                Type genericDefinition;
+                if (t.IsGenericType)
+                {
+                    _currentGenericType = t;
+                    genericDefinition = t.GetGenericTypeDefinition();
+                    _configuration.dependencies.TryGetValue(genericDefinition, out implementations);
+                    if (implementations != null)
+                        return GetInstance(implementations.First());
+                }
+                throw new Exception("Unknown type " + t.Name);
+            }
+        }
         private object CreateGeneric(Type t)
         {
-            List<Type> implementations;
+            object result = null;
+            List<ImplementationInfo> implementations;
             Type tResolve = t.GetGenericArguments()[0];
 
             _configuration.dependencies.TryGetValue(tResolve, out implementations);
             if (implementations != null)
             {
-                var result = Activator.CreateInstance(typeof(List<>).MakeGenericType(tResolve));
-                foreach (Type tImplementation in implementations)
+                result = Activator.CreateInstance(typeof(List<>).MakeGenericType(tResolve));
+                foreach (ImplementationInfo tImplementation in implementations)
                 {
-
+                    ((IList)result).Add(GetInstance(tImplementation));
                 }
-                return result;
             }
-            return null;
+            else
+                throw new Exception("Unknown type " + t.Name);
+            return result;
         }
 
         private object GetInstance(ImplementationInfo tImplementation)
@@ -78,22 +116,36 @@ namespace DependencyInjection
         }
         private object Create(Type t)
         {
+            object result;
             if (!_stack.Contains(t))
             {
                 _stack.Push(t);
 
+                if (t.IsGenericTypeDefinition)
+                {
+                    t = t.MakeGenericType(_currentGenericType.GenericTypeArguments);
+                }
 
 
-                var constructors = t.GetConstructors().OrderByDescending
-                    (x => x.GetParameters().Length).ToArray();
+                ConstructorInfo constructor = GetRightConstructor(t);
 
+                if (constructor != null)
+                {
+                    result = constructor.Invoke(GetConstructorParametersValues(constructor.GetParameters()));
+                }
+                else
+                {
+                    throw new Exception("Cannot find right constructor!");
+                }
                 _stack.TryPop(out t);
             }
             else
             {
                 throw new Exception("Cycle dependency ERROR!");
             }
+            return result;
         }
+
         private ConstructorInfo GetRightConstructor(Type t)
         {
             ConstructorInfo result = null;
@@ -119,6 +171,15 @@ namespace DependencyInjection
                     result = constructor;
                     break;
                 }
+            }
+            return result;
+        }
+        private object[] GetConstructorParametersValues(ParameterInfo[] parameters)
+        {
+            object[] result = new object[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                result[i] = Resolve(parameters[i].ParameterType);
             }
             return result;
         }
