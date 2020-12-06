@@ -34,5 +34,23 @@ namespace DependencyInjection
             }
             return true;
         }
+
+        private object CreateGeneric(Type t)
+        {
+            List<Type> implementations;
+            Type tResolve = t.GetGenericArguments()[0];
+
+            _configuration.dictionary.TryGetValue(tResolve, out implementations);
+            if (implementations != null)
+            {
+                var result = Activator.CreateInstance(typeof(List<>).MakeGenericType(tResolve));
+                foreach (Type tImplementation in implementations)
+                {
+
+                }
+                return result;
+            }
+            return null;
+        }
     }
 }
