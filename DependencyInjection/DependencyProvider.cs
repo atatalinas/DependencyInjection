@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 
 namespace DependencyInjection
@@ -58,6 +59,35 @@ namespace DependencyInjection
                 return result;
             }
             return null;
+        }
+
+        private ConstructorInfo GetRightConstructor(Type t)
+        {
+            ConstructorInfo result = null;
+            ConstructorInfo[] constructors = t.GetConstructors();
+            bool isRight;
+
+            foreach (ConstructorInfo constructor in constructors)
+            {
+                ParameterInfo[] parameters = constructor.GetParameters();
+
+                isRight = true;
+                foreach (ParameterInfo parameter in parameters)
+                {
+                    if (!_configuration.dependencies.ContainsKey(parameter.ParameterType))
+                    {
+                        isRight = false;
+                        break;
+                    }
+                }
+
+                if (isRight)
+                {
+                    result = constructor;
+                    break;
+                }
+            }
+            return result;
         }
     }
 }
