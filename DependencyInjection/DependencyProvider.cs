@@ -126,7 +126,6 @@ namespace DependencyInjection
                     t = t.MakeGenericType(_currentGenericType.GenericTypeArguments);
                 }
 
-
                 ConstructorInfo constructor = GetRightConstructor(t);
 
                 if (constructor != null)
@@ -141,8 +140,9 @@ namespace DependencyInjection
             }
             else
             {
-                throw new CycleDependencyException("Cycle dependency ERROR!");
+                result = null;
             }
+
             return result;
         }
 
