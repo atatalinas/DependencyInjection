@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
@@ -8,12 +9,14 @@ namespace DependencyInjection
     public class DependencyProvider
     {
         private DependenciesConfiguration _configuration;
+        private readonly ConcurrentStack<Type> _stack;
 
         public DependencyProvider(DependenciesConfiguration configuration)
         {
             if (ValidateConfiguration(configuration))
             {
                 _configuration = configuration;
+                _stack = new ConcurrentStack<Type>();
             }
             else
             {
@@ -61,6 +64,24 @@ namespace DependencyInjection
             return null;
         }
 
+        private object Create(Type t)
+        {
+            if (!_stack.Contains(t))
+            {
+                _stack.Push(t);
+
+
+
+                var constructors = t.GetConstructors().OrderByDescending
+                    (x => x.GetParameters().Length).ToArray();
+
+                _stack.TryPop(out t);
+            }
+            else
+            {
+                throw new Exception("Cycle dependency ERROR!");
+            }
+        }
         private ConstructorInfo GetRightConstructor(Type t)
         {
             ConstructorInfo result = null;
