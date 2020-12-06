@@ -23,7 +23,7 @@ namespace DependencyInjection
             }
             else
             {
-                throw new Exception("Configuration is not valid");
+                throw new ConfigurationValidationException("Configuration is not valid");
             }
         }
 
@@ -79,7 +79,7 @@ namespace DependencyInjection
                     if (implementations != null)
                         return GetInstance(implementations.First());
                 }
-                throw new Exception("Unknown type " + t.Name);
+                throw new TypeNotRegisterException("Unknown type " + t.Name);
             }
         }
         private object CreateGeneric(Type t)
@@ -98,7 +98,7 @@ namespace DependencyInjection
                 }
             }
             else
-                throw new Exception("Unknown type " + t.Name);
+                throw new TypeNotRegisterException("Unknown type " + t.Name);
             return result;
         }
 
@@ -114,7 +114,7 @@ namespace DependencyInjection
                 return Create(tImplementation.implementationType);
             }
         }
-        private object Create(Type t)
+        public object Create(Type t)
         {
             object result;
             if (!_stack.Contains(t))
@@ -135,13 +135,13 @@ namespace DependencyInjection
                 }
                 else
                 {
-                    throw new Exception("Cannot find right constructor!");
+                    throw new ConstructorNotFoundException("Cannot find right constructor!");
                 }
                 _stack.TryPop(out t);
             }
             else
             {
-                throw new Exception("Cycle dependency ERROR!");
+                throw new CycleDependencyException("Cycle dependency ERROR!");
             }
             return result;
         }
