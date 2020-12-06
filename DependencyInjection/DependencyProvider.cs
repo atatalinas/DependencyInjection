@@ -10,16 +10,23 @@ namespace DependencyInjection
 
         public DependencyProvider(DependenciesConfiguration configuration)
         {
-            _configuration = configuration;
+            if (ValidateConfiguration(configuration))
+            {
+                _configuration = configuration;
+            }
+            else
+            {
+                throw new Exception("Configuration is not valid");
+            }
         }
 
         private bool ValidateConfiguration(DependenciesConfiguration configuration)
         {
-            foreach (Type tDependency in configuration.dictionary.Keys)
+            foreach (Type tDependency in configuration.dependencies.Keys)
             {
                 if (!tDependency.IsValueType)
                 {
-                    foreach (Type tImplementation in configuration.dictionary[tDependency])
+                    foreach (Type tImplementation in configuration.dependencies[tDependency])
                     {
                         if (tImplementation.IsAbstract || tImplementation.IsInterface)
                         {
@@ -40,7 +47,7 @@ namespace DependencyInjection
             List<Type> implementations;
             Type tResolve = t.GetGenericArguments()[0];
 
-            _configuration.dictionary.TryGetValue(tResolve, out implementations);
+            _configuration.dependencies.TryGetValue(tResolve, out implementations);
             if (implementations != null)
             {
                 var result = Activator.CreateInstance(typeof(List<>).MakeGenericType(tResolve));

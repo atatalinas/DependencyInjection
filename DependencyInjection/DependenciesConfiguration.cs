@@ -7,36 +7,36 @@ namespace DependencyInjection
 {
     public class DependenciesConfiguration
     {
-        private ConcurrentDictionary<Type, List<Type>> dictionary;
+        public ConcurrentDictionary<Type, List<Type>> dependencies { get; }
 
         public DependenciesConfiguration()
         {
-            dictionary = new ConcurrentDictionary<Type, List<Type>>();
+            dependencies = new ConcurrentDictionary<Type, List<Type>>();
         }
 
-        public bool Register<TDependency, TImplementation>()
+        public bool Register<TDependency, TImplementation>(bool isSingleton)
         {
-            return Register(typeof(TDependency), typeof(TImplementation));
+            return Register(typeof(TDependency), typeof(TImplementation), isSingleton);
         }
 
-        public bool Register(Type tDependency, Type tImplementation)
+        public bool Register(Type tDependency, Type tImplementation, bool isSingleton)
         {
+            bool result = true;
+
             if (!tImplementation.IsInterface && !tImplementation.IsAbstract)
             {
-                if (!dictionary.ContainsKey(tDependency))
+                dependencies.TryAdd(tDependency, new List<Type>());
+
+                if (!dependencies[tDependency].Contains(tImplementation))
                 {
-                    dictionary.TryAdd(tDependency, new List<Type>());
-                }
-                if (!dictionary[tDependency].Contains(tImplementation))
-                {
-                    dictionary[tDependency].Add(tImplementation);
+                    dependencies[tDependency].Add(tImplementation);
                 }
             }
             else
             {
-                return false;
+                result = false;
             }
-            return true;
+            return result;
         }
     }
 }
