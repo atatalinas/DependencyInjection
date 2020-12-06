@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DependencyInjectionContainer;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
@@ -7,36 +8,36 @@ namespace DependencyInjection
 {
     public class DependenciesConfiguration
     {
-        public ConcurrentDictionary<Type, List<Type>> dependencies { get; }
+        public ConcurrentDictionary<Type, List<ImplementationInfo>> dependencies { get; }
 
         public DependenciesConfiguration()
         {
-            dependencies = new ConcurrentDictionary<Type, List<Type>>();
+            dependencies = new ConcurrentDictionary<Type, List<ImplementationInfo>>();
         }
 
-        public bool Register<TDependency, TImplementation>(bool isSingleton)
+        public void Register<TDependency, TImplementation>(bool isSingleton)
         {
-            return Register(typeof(TDependency), typeof(TImplementation), isSingleton);
+            Register(typeof(TDependency), typeof(TImplementation), isSingleton);
         }
 
-        public bool Register(Type tDependency, Type tImplementation, bool isSingleton)
+        public void Register(Type tDependency, Type tImplementation, bool isSingleton)
         {
-            bool result = true;
+            bool searchResult;
 
-            if (!tImplementation.IsInterface && !tImplementation.IsAbstract)
+            dependencies.TryAdd(tDependency, new List<ImplementationInfo>());
+            searchResult = false;
+            foreach (ImplementationInfo implementation in dependencies[tDependency])
             {
-                dependencies.TryAdd(tDependency, new List<Type>());
-
-                if (!dependencies[tDependency].Contains(tImplementation))
+                if (implementation.implementationType == tImplementation)
                 {
-                    dependencies[tDependency].Add(tImplementation);
+                    searchResult = true;
+                    break;
                 }
             }
-            else
+            if (!searchResult)
             {
-                result = false;
+                dependencies[tDependency].Add(new ImplementationInfo(tImplementation, isSingleton));
             }
-            return result;
         }
     }
 }
